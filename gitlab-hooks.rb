@@ -1,19 +1,12 @@
 require 'rubygems'
 require 'sinatra'
-require 'eventmachine' # lol node wat
+require 'eventmachine'
 require 'json'
 require 'asana'
-require 'hipchat'
 require './env' if File.exists?('env.rb')
+require './env-local' if File.exists?('env-local.rb')
 
 set :protection, :except => [:http_origin]
-
-# use Rack::Auth::Basic do |username, password|
-#   [username, password] == [ENV['username'], ENV['password']]
-# end
-
-HIPCHAT_COLORS = %w(yellow green purple gray) # red is reserved for errors
-DEFAULT_COLOR = 'yellow'
 
 post '/' do
   EventMachine.run do
@@ -24,26 +17,20 @@ post '/' do
     user = payload['user_name']
     branch = payload['ref'].split('/').last
 
-    rep = payload['repository']['url'].split('/').last(2).join('/')
-    push_msg = user + " pushed to branch " + branch + " of " + rep
+    rep = payload['repository']['name']
+    push_msg = "for " + user + ":\n\nIn " + rep + " " + branch
 
     Asana.configure do |client|
-      client.api_key = ENV['auth_token']
+      client.api_key = ENV['asana_token']
     end
-
-    @hipchat = HipChat::Client.new(ENV['hipchat_token'])
-    @msg_color = params['color'].nil? || !HIPCHAT_COLORS.include?(params['color']) ? DEFAULT_COLOR : params['color']
-    room = params['room']
 
     EventMachine.defer do
       payload['commits'].each do |commit|
-        message = " (" + commit['url'] + ")\n- #{commit['message']}"
-        check_commit(message, push_msg)
-        post_hipchat_message(push_msg + message, room)
+        sha1 = commit['id'][0..6]
+        check_commit(commit['message'], push_msg + " " + sha1 + "\n[" + commit['url'] + "]\n\n" + commit['message'])
       end
     end
   end
-  "BOOM! EvenMachine handled it!"
 end
 
 def check_commit(message, push_msg)
@@ -58,7 +45,7 @@ def check_commit(message, push_msg)
   # post commit to every taskid found
   task_list.each do |taskid|
     task = Asana::Task.find(taskid[0])
-    task.create_story({'text' => "#{push_msg} #{message}"})
+    task.create_story({'text' => "#{push_msg}"})
   end
 
   # close all tasks that had 'fix(ed/es/ing) #:id' in them
@@ -67,8 +54,3 @@ def check_commit(message, push_msg)
     task.modify(:completed => true)
   end
 end
-
-def post_hipchat_message(message, room)
-  @hipchat[room].send('GitLab Bot', message, :notify => true, :color => @msg_color)
-end
-

@@ -1,4 +1,2 @@
-ENV['auth_token'] = 'your Asana authentication token'
-ENV['hipchat_token'] = 'your hipchat authentication token'
-ENV['username'] = 'username for sinatra app http basic auth'
-ENV['password'] = 'password for sinatra app http basic auth'
+# You can find your token here: http://app.asana.com/-/account_api
+ENV['asana_token'] = 'xxxxxxxxx'
