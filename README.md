@@ -1,6 +1,8 @@
 Gitlab Asana Hook
 =================
 
+>**Note**: I've [submitted a PR to the official Gitlab repository](https://github.com/gitlabhq/gitlabhq/pull/7394) to integrate Asana as a service in Gitlab. As soon as this PR will be merged, this *gitlab-asana-hook* won't be necessary.
+
 This is a hook that we use to post to Asana whenever we push to a GitLab repository:
 
   - it will post a message when you mention a task ID in your commit, like `This commit is about #1234566776`
